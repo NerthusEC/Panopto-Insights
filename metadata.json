@@ -1,0 +1,5 @@
+{
+  "name": "Panopto Insights",
+  "description": "A smart desktop learning platform for university students to search lectures, view AI summaries, and generate quizzes.",
+  "requestFramePermissions": []
+}
