@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Lecture } from '../types';
-import { ArrowLeft, Play, Pause, MessageSquare, FileText, Share2, Sparkles, Send, Clock } from 'lucide-react';
+import { ArrowLeft, Play, Pause, MessageSquare, FileText, Share2, Sparkles, Send, Clock, Check } from 'lucide-react';
 import { generateVideoSummary, answerVideoQuestion } from '../services/geminiService';
 
 interface VideoDetailProps {
@@ -21,6 +22,7 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<{role: 'user' | 'ai', text: string}[]>([]);
   const [loadingChat, setLoadingChat] = useState(false);
+  const [showShareFeedback, setShowShareFeedback] = useState(false);
   
   // Video & Transcript State
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -95,6 +97,33 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
     }
   };
 
+  const handleShare = async () => {
+    const shareData = {
+        title: lecture.title,
+        text: `Check out this lecture: ${lecture.title} by ${lecture.instructor}`,
+        url: window.location.href
+    };
+
+    try {
+        if (navigator.share) {
+            await navigator.share(shareData);
+        } else {
+            await navigator.clipboard.writeText(`${shareData.text} - ${shareData.url}`);
+            setShowShareFeedback(true);
+            setTimeout(() => setShowShareFeedback(false), 2000);
+        }
+    } catch (err) {
+        // Fallback to clipboard if share was cancelled or failed
+        try {
+            await navigator.clipboard.writeText(`${shareData.text} - ${shareData.url}`);
+            setShowShareFeedback(true);
+            setTimeout(() => setShowShareFeedback(false), 2000);
+        } catch (clipboardErr) {
+            console.error('Failed to copy', clipboardErr);
+        }
+    }
+  };
+
   return (
     <div className="h-full flex flex-col md:flex-row overflow-hidden bg-white dark:bg-gray-900 transition-colors duration-300">
       {/* Left: Video Player Area */}
@@ -141,9 +170,21 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
             </div>
 
             <div className="flex items-center gap-4 border-b border-gray-100 dark:border-gray-800 pb-6">
-                <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                    <Share2 size={18} />
-                    <span>Share</span>
+                <button 
+                    onClick={handleShare}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                >
+                    {showShareFeedback ? (
+                        <>
+                           <Check size={18} className="text-green-500" />
+                           <span className="text-green-600 dark:text-green-400 font-medium">Copied!</span>
+                        </>
+                    ) : (
+                        <>
+                            <Share2 size={18} />
+                            <span>Share</span>
+                        </>
+                    )}
                 </button>
                 <button 
                     onClick={() => setActiveTab('transcript')}
@@ -324,3 +365,4 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
     </div>
   );
 };
+    
