@@ -34,3 +34,20 @@ export enum NavItem {
   Practice = 'practice',
   Profile = 'profile'
 }
+
+export interface Achievement {
+  title: string;
+  desc: string;
+  date: string;
+  icon: string;
+}
+
+export interface UserStats {
+  studyTimeMinutes: number;
+  quizzesTaken: number;
+  totalQuizScore: number;
+  totalQuestionsAnswered: number;
+  quizzesAced: number;
+  lecturesCompleted: number;
+  achievements: Achievement[];
+}

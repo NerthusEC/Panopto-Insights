@@ -1,24 +1,36 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { generateQuizFromTranscript } from '../services/geminiService';
 import { QuizQuestion, Lecture, QuizDifficulty } from '../types';
 import { Sparkles, CheckCircle, XCircle, ChevronRight, RefreshCw, BookOpen, Settings, BarChart, Layers } from 'lucide-react';
 
 interface PracticeProps {
   lectures: Lecture[];
+  onQuizComplete: (score: number, total: number, lectureTitle: string) => void;
 }
 
-export const Practice: React.FC<PracticeProps> = ({ lectures }) => {
+export const Practice: React.FC<PracticeProps> = ({ lectures, onQuizComplete }) => {
   const [step, setStep] = useState<'select' | 'configure' | 'loading' | 'quiz' | 'result'>('select');
   const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
   
-  // Quiz Configuration State
-  const [difficulty, setDifficulty] = useState<QuizDifficulty>('Intermediate');
-  const [numQuestions, setNumQuestions] = useState<number>(5);
+  // Quiz Configuration State - Initialize from localStorage or default
+  const [difficulty, setDifficulty] = useState<QuizDifficulty>(
+    () => (localStorage.getItem('quizDifficulty') as QuizDifficulty) || 'Intermediate'
+  );
+  const [numQuestions, setNumQuestions] = useState<number>(
+    () => Number(localStorage.getItem('quizNumQuestions')) || 5
+  );
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [userAnswers, setUserAnswers] = useState<number[]>([]);
   const [score, setScore] = useState(0);
+
+  // Persist configuration changes to localStorage
+  useEffect(() => {
+    localStorage.setItem('quizDifficulty', difficulty);
+    localStorage.setItem('quizNumQuestions', numQuestions.toString());
+  }, [difficulty, numQuestions]);
 
   const handleLectureSelect = (lecture: Lecture) => {
     setSelectedLecture(lecture);
@@ -50,6 +62,12 @@ export const Practice: React.FC<PracticeProps> = ({ lectures }) => {
         if (q.correctAnswer === userAnswers[idx]) correctCount++;
       });
       setScore(correctCount);
+      
+      // -- Notify Parent to Update Stats --
+      if (selectedLecture) {
+        onQuizComplete(correctCount, questions.length, selectedLecture.title);
+      }
+
       setStep('result');
     }
   };
@@ -61,7 +79,6 @@ export const Practice: React.FC<PracticeProps> = ({ lectures }) => {
     setCurrentQuestionIdx(0);
     setUserAnswers([]);
     setScore(0);
-    // Persist last config or reset? Let's persist.
   };
 
   return (
