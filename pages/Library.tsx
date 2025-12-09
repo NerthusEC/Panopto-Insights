@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { VideoCard } from '../components/VideoCard';
 import { Lecture } from '../types';
@@ -153,7 +152,7 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
     <div className="p-6 max-w-7xl mx-auto min-h-screen pb-24 relative">
       <header className="mb-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <h1 className="text-3xl font-bold text-accent">Library</h1>
+            <h1 className="text-3xl font-bold text-accent dark:text-white">Library</h1>
             
             <div>
                 <input 
@@ -179,7 +178,7 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
             <input 
               type="text" 
               placeholder="Search lectures, topics, or instructors..." 
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -194,7 +193,7 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
                         className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                             selectedSubject === subject 
                             ? 'bg-accent text-white' 
-                            : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                            : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                         }`}
                     >
                         {subject}
@@ -208,13 +207,13 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <button 
             onClick={handleUploadClick}
-            className="flex flex-col items-center justify-center h-full min-h-[300px] border-2 border-dashed border-gray-200 rounded-xl hover:border-primary hover:bg-orange-50 transition-all group"
+            className="flex flex-col items-center justify-center h-full min-h-[300px] border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl hover:border-primary hover:bg-orange-50 dark:hover:bg-gray-900/50 transition-all group"
         >
-            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4 group-hover:bg-white group-hover:shadow-md transition-all">
-                <Plus size={32} className="text-gray-400 group-hover:text-primary" />
+            <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4 group-hover:bg-white dark:group-hover:bg-gray-700 group-hover:shadow-md transition-all">
+                <Plus size={32} className="text-gray-400 dark:text-gray-500 group-hover:text-primary" />
             </div>
-            <p className="font-semibold text-gray-600 group-hover:text-primary">Add New Video</p>
-            <p className="text-xs text-gray-400 mt-1">MP4, MOV, WebM</p>
+            <p className="font-semibold text-gray-600 dark:text-gray-300 group-hover:text-primary">Add New Video</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">MP4, MOV, WebM</p>
         </button>
 
         {filteredLectures.map(lecture => (
@@ -231,7 +230,7 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
       {/* Upload Modal */}
       {isUploadModalOpen && pendingFile && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col md:flex-row max-h-[90vh]">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col md:flex-row max-h-[90vh] border border-gray-200 dark:border-gray-800">
                 
                 {/* Left: Video Preview */}
                 <div className="w-full md:w-1/2 bg-black flex items-center justify-center relative group">
@@ -255,22 +254,22 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
                 <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col">
                     <div className="flex justify-between items-start mb-6">
                         <div>
-                            <h2 className="text-2xl font-bold text-accent">Process Video</h2>
-                            <p className="text-gray-500 text-sm mt-1">AI Assistant requires metadata to generate analytics.</p>
+                            <h2 className="text-2xl font-bold text-accent dark:text-white">Process Video</h2>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">AI Assistant requires metadata to generate analytics.</p>
                         </div>
-                        <button onClick={closeUploadModal} className="text-gray-400 hover:text-gray-600">
+                        <button onClick={closeUploadModal} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
                             <X size={24} />
                         </button>
                     </div>
 
                     <div className="space-y-4 flex-1 overflow-y-auto">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Class Name</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Class Name</label>
                             <div className="relative">
                                 <Film size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input 
                                     type="text" 
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                     placeholder="e.g. CS101, Marketing"
                                     value={metadata.className}
                                     onChange={(e) => handleMetadataChange('className', e.target.value)}
@@ -279,12 +278,12 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Lecturer Name</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lecturer Name</label>
                             <div className="relative">
                                 <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input 
                                     type="text" 
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                     placeholder="e.g. Dr. Turing"
                                     value={metadata.lecturer}
                                     onChange={(e) => handleMetadataChange('lecturer', e.target.value)}
@@ -293,21 +292,21 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Upload Date</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Upload Date</label>
                             <div className="relative">
                                 <CalendarIcon size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input 
                                     type="date" 
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                     value={metadata.date}
                                     onChange={(e) => handleMetadataChange('date', e.target.value)}
                                 />
                             </div>
                         </div>
 
-                        <div className="bg-surface p-4 rounded-lg border border-gray-100">
-                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">AI Tasks</h4>
-                            <ul className="space-y-2 text-sm text-gray-600">
+                        <div className="bg-surface dark:bg-gray-800 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+                            <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">AI Tasks</h4>
+                            <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
                                 <li className="flex items-center gap-2">
                                     <div className="w-4 h-4 rounded-full border border-primary flex items-center justify-center">
                                         <div className="w-2 h-2 bg-primary rounded-full"></div>
@@ -330,7 +329,7 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
                         </div>
                     </div>
 
-                    <div className="mt-6 pt-6 border-t border-gray-100">
+                    <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
                         <button 
                             onClick={handleProcessVideo}
                             disabled={isProcessing || !metadata.className || !metadata.lecturer || !metadata.date}

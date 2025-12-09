@@ -12,9 +12,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({ lecture, onClick, compact 
   return (
     <div 
       onClick={() => onClick(lecture)}
-      className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+      className="group bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
     >
-      <div className="relative aspect-video bg-gray-200 overflow-hidden">
+      <div className="relative aspect-video bg-gray-200 dark:bg-gray-800 overflow-hidden">
         <img 
           src={lecture.thumbnailUrl} 
           alt={lecture.title} 
@@ -32,13 +32,13 @@ export const VideoCard: React.FC<VideoCardProps> = ({ lecture, onClick, compact 
         <div className="flex justify-between items-start mb-2">
             <span className="text-xs font-semibold text-primary uppercase tracking-wider">{lecture.subject}</span>
         </div>
-        <h3 className={`font-bold text-accent mb-2 leading-tight ${compact ? 'text-sm' : 'text-lg'}`}>
+        <h3 className={`font-bold text-accent dark:text-gray-100 mb-2 leading-tight ${compact ? 'text-sm' : 'text-lg'}`}>
           {lecture.title}
         </h3>
-        <p className="text-gray-500 text-sm mb-3">{lecture.instructor}</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">{lecture.instructor}</p>
         
         {!compact && (
-          <div className="flex items-center gap-4 text-xs text-gray-400 border-t border-gray-100 pt-3">
+          <div className="flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-3">
             <div className="flex items-center gap-1">
               <Calendar size={12} />
               <span>{lecture.date}</span>

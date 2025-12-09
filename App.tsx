@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavItem, Lecture } from './types';
 import { Navigation } from './components/Navigation';
 import { MobileNav } from './components/MobileNav';
@@ -13,6 +13,19 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavItem>(NavItem.Home);
   const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
   const [lectures, setLectures] = useState<Lecture[]>(MOCK_LECTURES);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
 
   const handleNavigate = (tab: NavItem) => {
     setActiveTab(tab);
@@ -51,9 +64,16 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface font-sans text-gray-900">
+    <div className="min-h-screen bg-surface dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-300">
       {/* Navigation (Desktop Sidebar) */}
-      {!selectedLecture && <Navigation activeTab={activeTab} onNavigate={handleNavigate} />}
+      {!selectedLecture && (
+        <Navigation 
+          activeTab={activeTab} 
+          onNavigate={handleNavigate} 
+          isDarkMode={isDarkMode}
+          toggleTheme={toggleTheme}
+        />
+      )}
 
       {/* Main Content Area */}
       <main className={`${selectedLecture ? 'w-full' : 'md:ml-64'} min-h-screen transition-all duration-300`}>
