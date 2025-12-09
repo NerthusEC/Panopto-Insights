@@ -9,6 +9,7 @@ export interface Lecture {
   subject: string;
   transcript: string; // Mock transcript for AI processing
   videoUrl?: string; // Optional URL for uploaded videos
+  summary?: string;
 }
 
 export interface QuizQuestion {

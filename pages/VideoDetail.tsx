@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Lecture } from '../types';
-import { ArrowLeft, Play, Pause, MessageSquare, FileText, Share2, Sparkles, Send, Clock, Check } from 'lucide-react';
+import { ArrowLeft, Play, MessageSquare, FileText, Share2, Sparkles, Send, Check, Loader2 } from 'lucide-react';
 import { generateVideoSummary, answerVideoQuestion } from '../services/geminiService';
 
 interface VideoDetailProps {
   lecture: Lecture;
   onBack: () => void;
+  onUpdateLecture?: (id: string, updates: Partial<Lecture>) => void;
 }
 
 interface TranscriptSegment {
@@ -15,10 +16,20 @@ interface TranscriptSegment {
   text: string;
 }
 
-export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => {
+export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpdateLecture }) => {
   const [activeTab, setActiveTab] = useState<'summary' | 'chat' | 'transcript'>('summary');
-  const [summary, setSummary] = useState<string | null>(null);
+  
+  // Initialize state correctly using props.
+  const [summary, setSummary] = useState<string | null>(lecture.summary || null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [transcriptText, setTranscriptText] = useState(lecture.transcript);
+
+  // Sync state if prop changes
+  useEffect(() => {
+    setSummary(lecture.summary || null);
+    setTranscriptText(lecture.transcript);
+  }, [lecture]);
+
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<{role: 'user' | 'ai', text: string}[]>([]);
   const [loadingChat, setLoadingChat] = useState(false);
@@ -29,22 +40,30 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
   const [currentTime, setCurrentTime] = useState(0);
   const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[] | null>(null);
 
+  // Initial Summary Generation (Only for Mock Lectures without existing summary)
   useEffect(() => {
-    // Generate summary on mount if not present
     const fetchSummary = async () => {
-        setLoadingSummary(true);
-        const result = await generateVideoSummary(lecture.transcript);
-        setSummary(result);
-        setLoadingSummary(false);
+        // If it's a mock lecture (no videoUrl) and has text but no summary, generate one.
+        // Uploaded videos should already have summary from the upload process.
+        if (!lecture.videoUrl && transcriptText && !summary) {
+            setLoadingSummary(true);
+            const result = await generateVideoSummary(transcriptText);
+            setSummary(result);
+            if (onUpdateLecture) {
+                onUpdateLecture(lecture.id, { summary: result });
+            }
+            setLoadingSummary(false);
+        }
     };
     fetchSummary();
-  }, [lecture]);
+  }, [lecture.id, lecture.videoUrl, transcriptText, summary, onUpdateLecture]);
 
   // Parse Transcript
   useEffect(() => {
     const parseTranscript = (text: string) => {
-        // Split by timestamp regex [MM:SS]
-        const parts = text.split(/(\[\d{2}:\d{2}\])/);
+        if (!text) return null;
+        // Split by timestamp regex [MM:SS] or [MMM:SS] to allow > 99 mins
+        const parts = text.split(/(\[\d{2,3}:\d{2}\])/);
         const result: TranscriptSegment[] = [];
         
         // If split didn't find timestamps, return null to fallback to plain text
@@ -66,19 +85,20 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
         return result;
     };
 
-    const segments = parseTranscript(lecture.transcript);
+    const segments = parseTranscript(transcriptText);
     setTranscriptSegments(segments);
-  }, [lecture]);
+  }, [transcriptText]);
 
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
     
     const userMsg = chatInput;
     setChatInput('');
+    
     setChatHistory(prev => [...prev, { role: 'user', text: userMsg }]);
     setLoadingChat(true);
 
-    const aiResponse = await answerVideoQuestion(lecture.transcript, userMsg);
+    const aiResponse = await answerVideoQuestion(transcriptText, userMsg, chatHistory);
     
     setChatHistory(prev => [...prev, { role: 'ai', text: aiResponse }]);
     setLoadingChat(false);
@@ -103,24 +123,59 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
         text: `Check out this lecture: ${lecture.title} by ${lecture.instructor}`,
         url: window.location.href
     };
+    
+    const textToShare = `${shareData.text} - ${shareData.url}`;
 
-    try {
-        if (navigator.share) {
-            await navigator.share(shareData);
-        } else {
-            await navigator.clipboard.writeText(`${shareData.text} - ${shareData.url}`);
-            setShowShareFeedback(true);
-            setTimeout(() => setShowShareFeedback(false), 2000);
-        }
-    } catch (err) {
-        // Fallback to clipboard if share was cancelled or failed
+    const fallbackCopyTextToClipboard = (text: string) => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px"; 
+        textArea.style.top = "0";
+        textArea.setAttribute('readonly', '');
+
+        document.body.appendChild(textArea);
+        
+        textArea.focus({ preventScroll: true });
+        textArea.select();
+        
         try {
-            await navigator.clipboard.writeText(`${shareData.text} - ${shareData.url}`);
+            const successful = document.execCommand('copy');
+            if (successful) {
+                setShowShareFeedback(true);
+                setTimeout(() => setShowShareFeedback(false), 2000);
+            } else {
+                console.error('Fallback: Copying text command was unsuccessful');
+            }
+        } catch (err) {
+             console.error('Fallback: Oops, unable to copy', err);
+        } finally {
+            document.body.removeChild(textArea);
+        }
+    };
+
+    if (navigator.share) {
+        try {
+            await navigator.share(shareData);
+            return; 
+        } catch (err) {
+            if ((err as Error).name === 'AbortError') return;
+            console.log("Native share failed, trying clipboard.", err);
+        }
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+            await navigator.clipboard.writeText(textToShare);
             setShowShareFeedback(true);
             setTimeout(() => setShowShareFeedback(false), 2000);
-        } catch (clipboardErr) {
-            console.error('Failed to copy', clipboardErr);
+        } catch (err) {
+            console.warn('Clipboard API failed, using fallback.', err);
+            fallbackCopyTextToClipboard(textToShare);
         }
+    } else {
+        fallbackCopyTextToClipboard(textToShare);
     }
   };
 
@@ -149,15 +204,6 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
                 <button className="absolute inset-0 m-auto w-20 h-20 flex items-center justify-center bg-primary text-white rounded-full shadow-2xl hover:scale-105 transition-transform z-10">
                     <Play size={32} fill="currentColor" className="ml-1" />
                 </button>
-
-                {/* Video Controls Placeholder */}
-                <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-black/80 to-transparent p-4 flex items-end">
-                    <div className="w-full h-1 bg-white/30 rounded-full mb-1">
-                        <div className="w-1/3 h-full bg-primary rounded-full relative">
-                            <div className="absolute right-0 -top-1 w-3 h-3 bg-white rounded-full shadow"></div>
-                        </div>
-                    </div>
-                </div>
             </>
           )}
         </div>
@@ -169,15 +215,15 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
                 <p className="text-gray-500 dark:text-gray-400 font-medium">Instructor: {lecture.instructor} • {lecture.date}</p>
             </div>
 
-            <div className="flex items-center gap-4 border-b border-gray-100 dark:border-gray-800 pb-6">
+            <div className="flex items-center gap-4 border-b border-gray-100 dark:border-gray-800 pb-6 flex-wrap">
                 <button 
                     onClick={handleShare}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition min-w-[100px] justify-center"
                 >
                     {showShareFeedback ? (
                         <>
                            <Check size={18} className="text-green-500" />
-                           <span className="text-green-600 dark:text-green-400 font-medium">Copied!</span>
+                           <span className="text-green-600 dark:text-green-400 font-medium whitespace-nowrap">Link copied!</span>
                         </>
                     ) : (
                         <>
@@ -185,13 +231,6 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
                             <span>Share</span>
                         </>
                     )}
-                </button>
-                <button 
-                    onClick={() => setActiveTab('transcript')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${activeTab === 'transcript' ? 'bg-accent text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-                >
-                     <FileText size={18} />
-                    <span>Transcript</span>
                 </button>
             </div>
 
@@ -202,11 +241,6 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
                     The instructor dives deep into theoretical frameworks and provides real-world examples 
                     to illustrate the complexity of the topic.
                 </p>
-                {/* Visual debug for AI processing if needed */}
-                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500">
-                    <p className="font-mono">Transcript Length: {lecture.transcript.length} chars</p>
-                    <p className="font-mono">Source: {lecture.videoUrl ? 'User Upload' : 'Library Archive'}</p>
-                </div>
             </div>
         </div>
       </div>
@@ -248,9 +282,8 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
                             <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-3/4 animate-pulse"></div>
                             <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-full animate-pulse"></div>
                             <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-5/6 animate-pulse"></div>
-                            <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-full animate-pulse"></div>
                         </div>
-                    ) : (
+                    ) : summary ? (
                         <div className="prose prose-sm prose-slate dark:prose-invert">
                             <h3 className="text-accent dark:text-gray-100 font-bold mb-4 flex items-center gap-2">
                                 <Sparkles size={16} className="text-primary" />
@@ -260,14 +293,20 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
                                 {summary}
                             </div>
                         </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-48 text-center p-4">
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
+                                No summary available.
+                            </p>
+                        </div>
                     )}
                 </div>
             )}
 
             {activeTab === 'transcript' && (
-                <div className="animate-in fade-in duration-300">
+                <div className="animate-in fade-in duration-300 flex flex-col h-full">
                      {transcriptSegments ? (
-                         <div className="divide-y divide-gray-50 dark:divide-gray-800">
+                         <div className="divide-y divide-gray-50 dark:divide-gray-800 flex-1 overflow-y-auto">
                              {transcriptSegments.map((segment, idx) => {
                                  const isActive = currentTime >= segment.time && 
                                                   (transcriptSegments[idx + 1] ? currentTime < transcriptSegments[idx + 1].time : true);
@@ -290,16 +329,23 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
                                  );
                              })}
                          </div>
-                     ) : (
+                     ) : transcriptText ? (
                          <div className="p-6">
                             <h3 className="text-accent dark:text-gray-100 font-bold mb-4 flex items-center gap-2">
                                 <FileText size={16} className="text-primary" />
                                 Full Transcript
                             </h3>
                             <div className="whitespace-pre-line text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
-                                {lecture.transcript}
+                                {transcriptText}
                             </div>
                          </div>
+                     ) : (
+                        <div className="flex flex-col items-center justify-center h-48 text-center p-4 mt-10">
+                            <FileText size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
+                                No transcript available.
+                            </p>
+                        </div>
                      )}
                 </div>
             )}
@@ -311,6 +357,9 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
                             <div className="text-center text-gray-400 dark:text-gray-500 mt-10">
                                 <MessageSquare size={32} className="mx-auto mb-2 opacity-50" />
                                 <p className="text-sm">Ask any question about the lecture content.</p>
+                                {!transcriptText && (
+                                    <p className="text-xs text-orange-500 mt-2">Note: Transcript required for accurate answers.</p>
+                                )}
                             </div>
                         )}
                         {chatHistory.map((msg, idx) => (
@@ -365,4 +414,3 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack }) => 
     </div>
   );
 };
-    

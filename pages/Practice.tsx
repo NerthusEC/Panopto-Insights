@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { generateQuizFromTranscript } from '../services/geminiService';
 import { QuizQuestion, Lecture, QuizDifficulty } from '../types';
-import { Sparkles, CheckCircle, XCircle, ChevronRight, RefreshCw, BookOpen, Settings, BarChart, Layers } from 'lucide-react';
+import { Sparkles, CheckCircle, XCircle, ChevronRight, RefreshCw, BookOpen, Settings, BarChart, Layers, RotateCcw } from 'lucide-react';
 
 interface PracticeProps {
   lectures: Lecture[];
@@ -79,6 +79,13 @@ export const Practice: React.FC<PracticeProps> = ({ lectures, onQuizComplete }) 
     setCurrentQuestionIdx(0);
     setUserAnswers([]);
     setScore(0);
+  };
+
+  const handleRetry = () => {
+    setCurrentQuestionIdx(0);
+    setUserAnswers(new Array(questions.length).fill(-1));
+    setScore(0);
+    setStep('quiz');
   };
 
   return (
@@ -300,6 +307,13 @@ export const Practice: React.FC<PracticeProps> = ({ lectures, onQuizComplete }) 
                 >
                     <BookOpen size={18} />
                     Back to Topics
+                </button>
+                <button 
+                    onClick={handleRetry}
+                    className="flex items-center gap-2 px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                >
+                    <RotateCcw size={18} />
+                    Retry Quiz
                 </button>
                 <button 
                     onClick={() => setStep('configure')}
