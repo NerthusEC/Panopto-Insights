@@ -1,3 +1,4 @@
+
 import { Lecture } from "./types";
 
 export const MOCK_LECTURES: Lecture[] = [
@@ -6,9 +7,10 @@ export const MOCK_LECTURES: Lecture[] = [
     title: "Introduction to Algorithms: Sorting & Complexity",
     instructor: "Dr. Alan Turing",
     date: "Oct 12, 2023",
-    duration: "45:20",
+    duration: "10:00", // Adjusted to match sample video duration roughly
     subject: "Computer Science",
     thumbnailUrl: "https://picsum.photos/800/450?random=1",
+    videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
     transcript: `
       Welcome everyone to CS101. Today we are discussing sorting algorithms and computational complexity. 
       Let's start with Big O notation. Big O notation describes the limiting behavior of a function when the argument tends towards a particular value or infinity. 
@@ -29,9 +31,10 @@ export const MOCK_LECTURES: Lecture[] = [
     title: "The Fall of the Roman Republic",
     instructor: "Prof. Mary Beard",
     date: "Sep 28, 2023",
-    duration: "58:15",
+    duration: "10:00",
     subject: "History",
     thumbnailUrl: "https://picsum.photos/800/450?random=2",
+    videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
     transcript: `
       Good morning. Today we turn our attention to the crisis of the Roman Republic.
       The Roman Republic didn't fall in a day. It was a long process of political turmoil, social unrest, and military ambition.
@@ -52,9 +55,10 @@ export const MOCK_LECTURES: Lecture[] = [
     title: "Quantum Mechanics: The Double Slit Experiment",
     instructor: "Dr. Richard Feynman",
     date: "Nov 05, 2023",
-    duration: "52:10",
+    duration: "12:00",
     subject: "Physics",
     thumbnailUrl: "https://picsum.photos/800/450?random=3",
+    videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
     transcript: `
       Hello class. Today we discuss the heart of quantum mechanics: the Double Slit Experiment.
       Imagine we fire particles, like electrons, at a wall with two slits. 
@@ -75,9 +79,10 @@ export const MOCK_LECTURES: Lecture[] = [
     title: "Renaissance Art: Perspective and Light",
     instructor: "Prof. Leonardo",
     date: "Dec 10, 2023",
-    duration: "48:00",
+    duration: "15:00",
     subject: "Art History",
     thumbnailUrl: "https://picsum.photos/800/450?random=4",
+    videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
     transcript: `
       Welcome to Art History. The Renaissance was a rebirth of classical learning and a revolution in artistic technique.
       One of the most profound developments was linear perspective. 

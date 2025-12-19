@@ -165,7 +165,7 @@ export const analyzeVideo = async (file: File): Promise<{ summary: string; trans
       type: Type.OBJECT,
       properties: {
         summary: { type: Type.STRING, description: "A detailed academic summary of the video content, highlighting key topics and visual information." },
-        transcript: { type: Type.STRING, description: "A complete, verbatim transcript of the video audio from the very first second to the very last second. You MUST use the format '[MM:SS] Spoken text...' for every segment." }
+        transcript: { type: Type.STRING, description: "A complete, verbatim transcript of the video from start to finish, including timestamps and visual descriptions." }
       },
       required: ["summary", "transcript"]
     };
@@ -180,13 +180,14 @@ export const analyzeVideo = async (file: File): Promise<{ summary: string; trans
           }
         },
         {
-          text: `Analyze this video lecture. 
-          1. Provide a comprehensive summary. 
-          2. Generate a FULL, VERBATIM transcript of the ENTIRE video. 
+          text: `Analyze this video lecture.
+          1. Provide a comprehensive summary.
+          2. Generate a FULL, VERBATIM transcript of the ENTIRE video.
              - You must transcript the audio from the beginning (00:00) to the very end.
-             - Do not stop at 5 minutes.
              - Timestamp every segment (approx every 10-30 seconds) using [MM:SS] format.
-             - Ensure every minute and second of the spoken content is covered and formatted correctly.`
+             - **CRITICAL: VISUAL ANALYSIS**: Examine every image, slide, whiteboard writing, and visual demonstration shown. Write down this visual information into the transcript enclosed in parentheses or brackets, e.g., "(Visual: Diagram of ...)" or "[Visual: Instructor points to ...]".
+             - Combine spoken text and visual descriptions in chronological order.
+             - Ensure every minute and second of the content is covered.`
         }
       ],
       config: {
@@ -208,14 +209,13 @@ export const analyzeVideo = async (file: File): Promise<{ summary: string; trans
 export const searchLibrary = async (query: string, lectures: Lecture[]): Promise<{ answer: string; relevantLectureIds: string[] }> => {
   try {
     // Prepare a lightweight version of the library for context.
-    // We include title, instructor, subject, AI summary, and a portion of the transcript.
     const libraryContext = lectures.map(l => ({
       id: l.id,
       title: l.title,
       instructor: l.instructor,
       subject: l.subject,
       summary: l.summary || "Summary not available.",
-      // Include a significant portion of the transcript (e.g., first 20k chars) to allow deep search
+      // Include a significant portion of the transcript to allow deep search
       transcript_snippet: l.transcript ? l.transcript.slice(0, 20000) : "No transcript available."
     }));
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { generateQuizFromTranscript } from '../services/geminiService';
 import { QuizQuestion, Lecture, QuizDifficulty } from '../types';
@@ -7,9 +6,10 @@ import { Sparkles, CheckCircle, XCircle, ChevronRight, RefreshCw, BookOpen, Sett
 interface PracticeProps {
   lectures: Lecture[];
   onQuizComplete: (score: number, total: number, lectureTitle: string) => void;
+  initialLecture?: Lecture | null;
 }
 
-export const Practice: React.FC<PracticeProps> = ({ lectures, onQuizComplete }) => {
+export const Practice: React.FC<PracticeProps> = ({ lectures, onQuizComplete, initialLecture }) => {
   const [step, setStep] = useState<'select' | 'configure' | 'loading' | 'quiz' | 'result'>('select');
   const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
   
@@ -31,6 +31,14 @@ export const Practice: React.FC<PracticeProps> = ({ lectures, onQuizComplete }) 
     localStorage.setItem('quizDifficulty', difficulty);
     localStorage.setItem('quizNumQuestions', numQuestions.toString());
   }, [difficulty, numQuestions]);
+
+  // Handle incoming initial lecture (e.g. from VideoDetail)
+  useEffect(() => {
+    if (initialLecture) {
+        setSelectedLecture(initialLecture);
+        setStep('configure');
+    }
+  }, [initialLecture]);
 
   const handleLectureSelect = (lecture: Lecture) => {
     setSelectedLecture(lecture);

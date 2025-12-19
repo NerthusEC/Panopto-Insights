@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { NavItem, Lecture, UserStats } from './types';
 import { Navigation } from './components/Navigation';
@@ -26,7 +25,15 @@ const INITIAL_STATS: UserStats = {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavItem>(NavItem.Home);
   const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
-  const [lectures, setLectures] = useState<Lecture[]>(MOCK_LECTURES);
+  const [lectures, setLectures] = useState<Lecture[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('lectures');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    }
+    return MOCK_LECTURES;
+  });
   
   // -- Dynamic User Data --
   const [userStats, setUserStats] = useState<UserStats>(() => {
@@ -53,7 +60,14 @@ const App: React.FC = () => {
     return false;
   });
 
+  // -- Practice Target --
+  const [practiceTargetLecture, setPracticeTargetLecture] = useState<Lecture | null>(null);
+
   // Persistence Effects
+  useEffect(() => {
+    localStorage.setItem('lectures', JSON.stringify(lectures));
+  }, [lectures]);
+
   useEffect(() => {
     localStorage.setItem('userStats', JSON.stringify(userStats));
   }, [userStats]);
@@ -81,6 +95,9 @@ const App: React.FC = () => {
   const handleNavigate = (tab: NavItem) => {
     setActiveTab(tab);
     setSelectedLecture(null);
+    if (tab !== NavItem.Practice) {
+        setPracticeTargetLecture(null);
+    }
   };
 
   const handleLectureSelect = (lecture: Lecture) => {
@@ -98,6 +115,19 @@ const App: React.FC = () => {
 
   const handleAddLecture = (newLecture: Lecture) => {
     setLectures(prev => [newLecture, ...prev]);
+  };
+
+  const handleUpdateLecture = (id: string, updates: Partial<Lecture>) => {
+    setLectures(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
+    if (selectedLecture && selectedLecture.id === id) {
+      setSelectedLecture(prev => prev ? { ...prev, ...updates } : null);
+    }
+  };
+
+  const handleLaunchQuiz = (lecture: Lecture) => {
+      setPracticeTargetLecture(lecture);
+      setSelectedLecture(null);
+      setActiveTab(NavItem.Practice);
   };
 
   const handleQuizComplete = (score: number, totalQuestions: number, lectureTitle: string) => {
@@ -148,7 +178,14 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (selectedLecture) {
-      return <VideoDetail lecture={selectedLecture} onBack={handleBackFromVideo} />;
+      return (
+        <VideoDetail 
+          lecture={selectedLecture} 
+          onBack={handleBackFromVideo} 
+          onUpdateLecture={handleUpdateLecture}
+          onLaunchQuiz={handleLaunchQuiz}
+        />
+      );
     }
 
     switch (activeTab) {
@@ -164,7 +201,7 @@ const App: React.FC = () => {
       case NavItem.Library:
         return <Library lectures={lectures} onLectureSelect={handleLectureSelect} onAddLecture={handleAddLecture} />;
       case NavItem.Practice:
-        return <Practice lectures={lectures} onQuizComplete={handleQuizComplete} />;
+        return <Practice lectures={lectures} onQuizComplete={handleQuizComplete} initialLecture={practiceTargetLecture} />;
       case NavItem.Profile:
         return <Profile isDarkMode={isDarkMode} toggleTheme={toggleTheme} stats={userStats} />;
       default:

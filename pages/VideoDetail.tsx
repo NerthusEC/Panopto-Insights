@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Lecture } from '../types';
-import { ArrowLeft, Play, MessageSquare, FileText, Share2, Sparkles, Send, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, Play, MessageSquare, FileText, Share2, Sparkles, Send, Check, Loader2, GraduationCap, Gauge, ChevronDown, AlertCircle } from 'lucide-react';
 import { generateVideoSummary, answerVideoQuestion } from '../services/geminiService';
 
 interface VideoDetailProps {
   lecture: Lecture;
   onBack: () => void;
   onUpdateLecture?: (id: string, updates: Partial<Lecture>) => void;
+  onLaunchQuiz: (lecture: Lecture) => void;
 }
 
 interface TranscriptSegment {
@@ -16,18 +17,20 @@ interface TranscriptSegment {
   text: string;
 }
 
-export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpdateLecture }) => {
+export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpdateLecture, onLaunchQuiz }) => {
   const [activeTab, setActiveTab] = useState<'summary' | 'chat' | 'transcript'>('summary');
   
   // Initialize state correctly using props.
   const [summary, setSummary] = useState<string | null>(lecture.summary || null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [transcriptText, setTranscriptText] = useState(lecture.transcript);
+  const [videoError, setVideoError] = useState(false);
 
   // Sync state if prop changes
   useEffect(() => {
     setSummary(lecture.summary || null);
     setTranscriptText(lecture.transcript);
+    setVideoError(false); // Reset error state on new lecture
   }, [lecture]);
 
   const [chatInput, setChatInput] = useState('');
@@ -38,14 +41,16 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
   // Video & Transcript State
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[] | null>(null);
+  const activeSegmentRef = useRef<HTMLDivElement>(null);
 
   // Initial Summary Generation (Only for Mock Lectures without existing summary)
   useEffect(() => {
     const fetchSummary = async () => {
-        // If it's a mock lecture (no videoUrl) and has text but no summary, generate one.
+        // If it's a mock lecture (no videoUrl or error) and has text but no summary, generate one.
         // Uploaded videos should already have summary from the upload process.
-        if (!lecture.videoUrl && transcriptText && !summary) {
+        if (transcriptText && !summary && (!lecture.videoUrl || videoError)) {
             setLoadingSummary(true);
             const result = await generateVideoSummary(transcriptText);
             setSummary(result);
@@ -56,7 +61,14 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
         }
     };
     fetchSummary();
-  }, [lecture.id, lecture.videoUrl, transcriptText, summary, onUpdateLecture]);
+  }, [lecture.id, lecture.videoUrl, transcriptText, summary, onUpdateLecture, videoError]);
+
+  // Apply playback speed
+  useEffect(() => {
+    if (videoRef.current) {
+        videoRef.current.playbackRate = playbackSpeed;
+    }
+  }, [playbackSpeed]);
 
   // Parse Transcript
   useEffect(() => {
@@ -88,6 +100,13 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
     const segments = parseTranscript(transcriptText);
     setTranscriptSegments(segments);
   }, [transcriptText]);
+
+  // Scroll active segment into view
+  useEffect(() => {
+    if (activeSegmentRef.current && activeTab === 'transcript') {
+        activeSegmentRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [currentTime, activeTab]);
 
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
@@ -188,7 +207,7 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
             <ArrowLeft size={20} />
           </button>
           
-          {lecture.videoUrl ? (
+          {lecture.videoUrl && !videoError ? (
             <video 
                 ref={videoRef}
                 src={lecture.videoUrl} 
@@ -196,15 +215,32 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
                 autoPlay 
                 className="w-full h-full"
                 onTimeUpdate={handleTimeUpdate}
+                onError={() => setVideoError(true)}
             />
           ) : (
-            <>
-                <img src={lecture.thumbnailUrl} alt={lecture.title} className="w-full h-full object-cover opacity-60" />
-                
-                <button className="absolute inset-0 m-auto w-20 h-20 flex items-center justify-center bg-primary text-white rounded-full shadow-2xl hover:scale-105 transition-transform z-10">
-                    <Play size={32} fill="currentColor" className="ml-1" />
-                </button>
-            </>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white p-4 text-center z-20">
+                 {/* Error / Placeholder UI */}
+                {videoError ? (
+                    <>
+                        <AlertCircle size={48} className="mb-4 text-red-500" />
+                        <h3 className="text-xl font-bold mb-2">Video Unavailable</h3>
+                        <p className="text-gray-400 max-w-md text-sm">
+                            The video stream could not be loaded. If this was an uploaded video, the link may have expired on refresh.
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <img src={lecture.thumbnailUrl} alt={lecture.title} className="absolute inset-0 w-full h-full object-cover opacity-40" />
+                        <div className="relative z-10 flex flex-col items-center">
+                            <AlertCircle size={48} className="mb-4 text-gray-400" />
+                            <h3 className="text-xl font-bold mb-2">No Video Source</h3>
+                            <p className="text-gray-300 max-w-md text-sm">
+                                This lecture entry does not have a video file attached.
+                            </p>
+                        </div>
+                    </>
+                )}
+            </div>
           )}
         </div>
 
@@ -232,6 +268,31 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
                         </>
                     )}
                 </button>
+                <button 
+                    onClick={() => onLaunchQuiz(lecture)}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition min-w-[100px] justify-center"
+                >
+                    <GraduationCap size={18} />
+                    <span>Take Quiz</span>
+                </button>
+                
+                {/* Playback Speed Control */}
+                <div className="relative flex items-center">
+                    <Gauge size={18} className="absolute left-3 text-gray-500 pointer-events-none" />
+                    <select
+                        value={playbackSpeed}
+                        onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+                        className="appearance-none pl-10 pr-8 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition cursor-pointer font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                        <option value="0.5">0.5x Speed</option>
+                        <option value="0.75">0.75x Speed</option>
+                        <option value="1">1x Normal</option>
+                        <option value="1.25">1.25x Speed</option>
+                        <option value="1.5">1.5x Speed</option>
+                        <option value="2">2x Speed</option>
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 text-gray-500 pointer-events-none" />
+                </div>
             </div>
 
             <div>
@@ -314,14 +375,25 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
                                  return (
                                      <div 
                                         key={idx} 
+                                        ref={isActive ? activeSegmentRef : null}
                                         onClick={() => handleSeek(segment.time)}
-                                        className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${isActive ? 'bg-orange-50 dark:bg-orange-900/10 border-l-4 border-primary' : 'border-l-4 border-transparent'}`}
+                                        className={`p-6 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-all duration-300 ${
+                                            isActive 
+                                            ? 'bg-orange-50 dark:bg-orange-900/30 border-l-4 border-primary shadow-lg ring-1 ring-primary/20 transform scale-[1.02]' 
+                                            : 'border-l-4 border-transparent opacity-80 hover:opacity-100'
+                                        }`}
                                      >
-                                         <div className="flex gap-3">
-                                             <span className="text-xs font-mono text-primary font-medium shrink-0 pt-1">
+                                         <div className="flex gap-4">
+                                             <span className={`text-sm font-mono font-medium shrink-0 pt-1 transition-colors ${
+                                                isActive ? 'text-primary' : 'text-gray-400 dark:text-gray-500'
+                                             }`}>
                                                 {segment.displayTime}
                                              </span>
-                                             <p className={`text-sm leading-relaxed ${isActive ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
+                                             <p className={`text-base leading-loose transition-colors ${
+                                                isActive 
+                                                ? 'text-gray-900 dark:text-white font-bold' 
+                                                : 'text-gray-700 dark:text-gray-300'
+                                             }`}>
                                                 {segment.text}
                                              </p>
                                          </div>
@@ -335,7 +407,7 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
                                 <FileText size={16} className="text-primary" />
                                 Full Transcript
                             </h3>
-                            <div className="whitespace-pre-line text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
+                            <div className="whitespace-pre-line text-gray-700 dark:text-gray-300 leading-loose text-base">
                                 {transcriptText}
                             </div>
                          </div>

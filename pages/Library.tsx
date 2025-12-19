@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { VideoCard } from '../components/VideoCard';
 import { Lecture } from '../types';
-import { Search, Upload, Plus, X, Film, User, Calendar as CalendarIcon, Loader2, Play, Sparkles as SparklesIcon, MessageSquare, Send, Bot } from 'lucide-react';
+import { Search, Upload, Plus, X, Film, User, Calendar as CalendarIcon, Loader2, Play, Sparkles as SparklesIcon, MessageSquare, Send, Bot, Filter } from 'lucide-react';
 import { analyzeVideo, searchLibrary } from '../services/geminiService';
 
 interface LibraryProps {
@@ -26,6 +26,13 @@ interface ChatMessage {
 export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onAddLecture }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('All');
+  
+  // Advanced Filters State
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedInstructor, setSelectedInstructor] = useState('All');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Upload Modal State
@@ -45,6 +52,7 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const subjects = ['All', ...Array.from(new Set(lectures.map(l => l.subject)))];
+  const instructors = ['All', ...Array.from(new Set(lectures.map(l => l.instructor)))];
 
   const filteredLectures = lectures.filter(lecture => {
     const term = searchTerm.toLowerCase();
@@ -52,7 +60,37 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
                           lecture.instructor.toLowerCase().includes(term) ||
                           (lecture.transcript && lecture.transcript.toLowerCase().includes(term)); // Enhanced search
     const matchesSubject = selectedSubject === 'All' || lecture.subject === selectedSubject;
-    return matchesSearch && matchesSubject;
+    const matchesInstructor = selectedInstructor === 'All' || lecture.instructor === selectedInstructor;
+
+    let matchesDate = true;
+    if (startDate || endDate) {
+        const lectureDate = new Date(lecture.date);
+        // Reset time part for accurate date comparison
+        lectureDate.setHours(0, 0, 0, 0);
+
+        if (startDate) {
+            const start = new Date(startDate);
+            // new Date('YYYY-MM-DD') defaults to UTC, which might be previous day in local time. 
+            // Adding 'T00:00:00' helps force local time parsing in many environments, 
+            // or simply using the input value string directly if we parse lecture date similarly.
+            // For simplicity here, we assume standard browser behavior or timezone offset handling.
+            // Better to use setHours to normalize.
+            start.setHours(0, 0, 0, 0);
+            // Adjust for timezone offset if needed, but for now simple comparison:
+            // Actually, Date.parse(startDate) treats YYYY-MM-DD as UTC. 
+            // let's construct it manually to be safe for local time comparison.
+            const [y, m, d] = startDate.split('-').map(Number);
+            const localStart = new Date(y, m - 1, d);
+            matchesDate = matchesDate && lectureDate >= localStart;
+        }
+        if (endDate) {
+            const [y, m, d] = endDate.split('-').map(Number);
+            const localEnd = new Date(y, m - 1, d);
+            matchesDate = matchesDate && lectureDate <= localEnd;
+        }
+    }
+
+    return matchesSearch && matchesSubject && matchesInstructor && matchesDate;
   });
 
   // Scroll chat to bottom
@@ -231,15 +269,28 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
         </div>
         
         <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input 
-              type="text" 
-              placeholder="Search lectures, topics, or instructors..." 
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="relative flex-1 flex gap-3">
+            <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input 
+                type="text" 
+                placeholder="Search lectures, topics, or instructors..." 
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`p-3 rounded-xl border transition-colors ${
+                    showFilters 
+                    ? 'bg-accent text-white border-accent' 
+                    : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+                title="Toggle Filters"
+            >
+                <Filter size={20} />
+            </button>
           </div>
           
           <button 
@@ -254,6 +305,48 @@ export const Library: React.FC<LibraryProps> = ({ lectures, onLectureSelect, onA
              <span>Ask AI</span>
           </button>
         </div>
+
+        {/* Extended Filters Panel */}
+        {showFilters && (
+            <div className="mt-4 p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2">
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Instructor</label>
+                    <select
+                        value={selectedInstructor}
+                        onChange={(e) => setSelectedInstructor(e.target.value)}
+                        className="w-full p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-primary outline-none"
+                    >
+                        {instructors.map(inst => (
+                            <option key={inst} value={inst}>{inst}</option>
+                        ))}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">From Date</label>
+                    <div className="relative">
+                        <CalendarIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-primary outline-none"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">To Date</label>
+                    <div className="relative">
+                        <CalendarIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-primary outline-none"
+                        />
+                    </div>
+                </div>
+            </div>
+        )}
         
         <div className="flex flex-wrap gap-2 mt-4">
             {subjects.map(subject => (
