@@ -9,22 +9,22 @@ import { Profile } from './pages/Profile';
 import { VideoDetail } from './pages/VideoDetail';
 import { MOCK_LECTURES } from './constants';
 
-// Initial stats if nothing is in localStorage
+// Reset stats to zero for a fresh start
 const INITIAL_STATS: UserStats = {
-  studyTimeMinutes: 125, // Starting with some mock data so it doesn't look empty
-  quizzesTaken: 5,
-  totalQuizScore: 42, // e.g. 42 correct answers total
-  totalQuestionsAnswered: 50,
-  quizzesAced: 1,
-  lecturesCompleted: 8,
-  achievements: [
-    { title: "First Step", desc: "Completed your first lecture", date: "1 week ago", icon: "🚀" }
-  ]
+  studyTimeMinutes: 0,
+  quizzesTaken: 0,
+  totalQuizScore: 0,
+  totalQuestionsAnswered: 0,
+  quizzesAced: 0,
+  lecturesCompleted: 0,
+  achievements: []
 };
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavItem>(NavItem.Home);
   const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
+  
+  // Starting with an empty array as requested
   const [lectures, setLectures] = useState<Lecture[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('lectures');
@@ -32,10 +32,9 @@ const App: React.FC = () => {
         return JSON.parse(saved);
       }
     }
-    return MOCK_LECTURES;
+    return []; // No lectures initially
   });
   
-  // -- Dynamic User Data --
   const [userStats, setUserStats] = useState<UserStats>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('userStats');
@@ -47,12 +46,11 @@ const App: React.FC = () => {
   const [recentLectureIds, setRecentLectureIds] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('recentLectureIds');
-      return saved ? JSON.parse(saved) : [MOCK_LECTURES[0].id, MOCK_LECTURES[1].id];
+      return saved ? JSON.parse(saved) : [];
     }
-    return [MOCK_LECTURES[0].id, MOCK_LECTURES[1].id];
+    return [];
   });
 
-  // -- Theme --
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
         return localStorage.getItem('theme') === 'dark';
@@ -60,10 +58,8 @@ const App: React.FC = () => {
     return false;
   });
 
-  // -- Practice Target --
   const [practiceTargetLecture, setPracticeTargetLecture] = useState<Lecture | null>(null);
 
-  // Persistence Effects
   useEffect(() => {
     localStorage.setItem('lectures', JSON.stringify(lectures));
   }, [lectures]);
@@ -90,8 +86,6 @@ const App: React.FC = () => {
     setIsDarkMode(!isDarkMode);
   };
 
-  // -- Handlers --
-
   const handleNavigate = (tab: NavItem) => {
     setActiveTab(tab);
     setSelectedLecture(null);
@@ -102,10 +96,9 @@ const App: React.FC = () => {
 
   const handleLectureSelect = (lecture: Lecture) => {
     setSelectedLecture(lecture);
-    // Update Recent History
     setRecentLectureIds(prev => {
       const filtered = prev.filter(id => id !== lecture.id);
-      return [lecture.id, ...filtered].slice(0, 5); // Keep last 5
+      return [lecture.id, ...filtered].slice(0, 5);
     });
   };
 
@@ -137,12 +130,10 @@ const App: React.FC = () => {
       newStats.quizzesTaken += 1;
       newStats.totalQuizScore += score;
       newStats.totalQuestionsAnswered += totalQuestions;
-      newStats.studyTimeMinutes += 15; // Assume ~15 mins study time per quiz
+      newStats.studyTimeMinutes += 15;
       
-      // Check for 'Aced'
       if (score === totalQuestions) {
         newStats.quizzesAced += 1;
-        // Add achievement if it's a new ace
         const hasAceAchievement = newStats.achievements.some(a => a.title === 'Perfectionist');
         if (!hasAceAchievement) {
           newStats.achievements.unshift({
@@ -154,7 +145,6 @@ const App: React.FC = () => {
         }
       }
 
-      // Check for 'Quiz Master' (e.g. 10 quizzes)
       if (newStats.quizzesTaken === 10) {
          newStats.achievements.unshift({
             title: "Quiz Master",
@@ -164,14 +154,12 @@ const App: React.FC = () => {
           });
       }
 
-      // Increment lectures completed count (heuristic)
       newStats.lecturesCompleted += 1;
 
       return newStats;
     });
   };
 
-  // Resolve recent lectures objects
   const recentLectures = recentLectureIds
     .map(id => lectures.find(l => l.id === id))
     .filter((l): l is Lecture => !!l);
@@ -211,7 +199,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-surface dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-300">
-      {/* Navigation (Desktop Sidebar) */}
       {!selectedLecture && (
         <Navigation 
           activeTab={activeTab} 
@@ -221,12 +208,10 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Main Content Area */}
       <main className={`${selectedLecture ? 'w-full' : 'md:ml-64'} min-h-screen transition-all duration-300`}>
         {renderContent()}
       </main>
 
-      {/* Navigation (Mobile Bottom Bar) */}
       {!selectedLecture && <MobileNav activeTab={activeTab} onNavigate={handleNavigate} />}
     </div>
   );

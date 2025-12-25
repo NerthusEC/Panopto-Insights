@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Lecture } from '../types';
 import { ArrowLeft, Play, MessageSquare, FileText, Share2, Sparkles, Send, Check, Loader2, GraduationCap, Gauge, ChevronDown, AlertCircle } from 'lucide-react';
@@ -20,17 +19,15 @@ interface TranscriptSegment {
 export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpdateLecture, onLaunchQuiz }) => {
   const [activeTab, setActiveTab] = useState<'summary' | 'chat' | 'transcript'>('summary');
   
-  // Initialize state correctly using props.
   const [summary, setSummary] = useState<string | null>(lecture.summary || null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [transcriptText, setTranscriptText] = useState(lecture.transcript);
   const [videoError, setVideoError] = useState(false);
 
-  // Sync state if prop changes
   useEffect(() => {
     setSummary(lecture.summary || null);
     setTranscriptText(lecture.transcript);
-    setVideoError(false); // Reset error state on new lecture
+    setVideoError(false);
   }, [lecture]);
 
   const [chatInput, setChatInput] = useState('');
@@ -38,18 +35,14 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
   const [loadingChat, setLoadingChat] = useState(false);
   const [showShareFeedback, setShowShareFeedback] = useState(false);
   
-  // Video & Transcript State
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[] | null>(null);
   const activeSegmentRef = useRef<HTMLDivElement>(null);
 
-  // Initial Summary Generation (Only for Mock Lectures without existing summary)
   useEffect(() => {
     const fetchSummary = async () => {
-        // If it's a mock lecture (no videoUrl or error) and has text but no summary, generate one.
-        // Uploaded videos should already have summary from the upload process.
         if (transcriptText && !summary && (!lecture.videoUrl || videoError)) {
             setLoadingSummary(true);
             const result = await generateVideoSummary(transcriptText);
@@ -63,22 +56,18 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
     fetchSummary();
   }, [lecture.id, lecture.videoUrl, transcriptText, summary, onUpdateLecture, videoError]);
 
-  // Apply playback speed
   useEffect(() => {
     if (videoRef.current) {
         videoRef.current.playbackRate = playbackSpeed;
     }
   }, [playbackSpeed]);
 
-  // Parse Transcript
   useEffect(() => {
     const parseTranscript = (text: string) => {
         if (!text) return null;
-        // Split by timestamp regex [MM:SS] or [MMM:SS] to allow > 99 mins
         const parts = text.split(/(\[\d{2,3}:\d{2}\])/);
         const result: TranscriptSegment[] = [];
         
-        // If split didn't find timestamps, return null to fallback to plain text
         if (parts.length <= 1) return null;
 
         for (let i = 1; i < parts.length; i += 2) {
@@ -101,7 +90,6 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
     setTranscriptSegments(segments);
   }, [transcriptText]);
 
-  // Scroll active segment into view
   useEffect(() => {
     if (activeSegmentRef.current && activeTab === 'transcript') {
         activeSegmentRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -132,7 +120,10 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
   const handleSeek = (time: number) => {
     if (videoRef.current) {
         videoRef.current.currentTime = time;
-        videoRef.current.play();
+        // If it was paused, maybe the user wants it to play now
+        videoRef.current.play().catch(() => {
+          // Play might be blocked if not user initiated, but this is a click
+        });
     }
   };
 
@@ -148,27 +139,21 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
     const fallbackCopyTextToClipboard = (text: string) => {
         const textArea = document.createElement("textarea");
         textArea.value = text;
-        
         textArea.style.position = "fixed";
         textArea.style.left = "-9999px"; 
         textArea.style.top = "0";
         textArea.setAttribute('readonly', '');
-
         document.body.appendChild(textArea);
-        
         textArea.focus({ preventScroll: true });
         textArea.select();
-        
         try {
             const successful = document.execCommand('copy');
             if (successful) {
                 setShowShareFeedback(true);
                 setTimeout(() => setShowShareFeedback(false), 2000);
-            } else {
-                console.error('Fallback: Copying text command was unsuccessful');
             }
         } catch (err) {
-             console.error('Fallback: Oops, unable to copy', err);
+             console.error('Fallback copy failed', err);
         } finally {
             document.body.removeChild(textArea);
         }
@@ -180,7 +165,6 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
             return; 
         } catch (err) {
             if ((err as Error).name === 'AbortError') return;
-            console.log("Native share failed, trying clipboard.", err);
         }
     }
 
@@ -190,7 +174,6 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
             setShowShareFeedback(true);
             setTimeout(() => setShowShareFeedback(false), 2000);
         } catch (err) {
-            console.warn('Clipboard API failed, using fallback.', err);
             fallbackCopyTextToClipboard(textToShare);
         }
     } else {
@@ -200,7 +183,6 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
 
   return (
     <div className="h-full flex flex-col md:flex-row overflow-hidden bg-white dark:bg-gray-900 transition-colors duration-300">
-      {/* Left: Video Player Area */}
       <div className="flex-1 flex flex-col h-full overflow-y-auto">
         <div className="bg-black aspect-video relative flex items-center justify-center group sticky top-0 z-20">
           <button onClick={onBack} className="absolute top-4 left-4 text-white z-10 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors">
@@ -219,13 +201,12 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
             />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white p-4 text-center z-20">
-                 {/* Error / Placeholder UI */}
                 {videoError ? (
                     <>
                         <AlertCircle size={48} className="mb-4 text-red-500" />
                         <h3 className="text-xl font-bold mb-2">Video Unavailable</h3>
                         <p className="text-gray-400 max-w-md text-sm">
-                            The video stream could not be loaded. If this was an uploaded video, the link may have expired on refresh.
+                            The video stream could not be loaded or the source has expired.
                         </p>
                     </>
                 ) : (
@@ -276,7 +257,6 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
                     <span>Take Quiz</span>
                 </button>
                 
-                {/* Playback Speed Control */}
                 <div className="relative flex items-center">
                     <Gauge size={18} className="absolute left-3 text-gray-500 pointer-events-none" />
                     <select
@@ -299,14 +279,13 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
                 <h3 className="font-bold text-accent dark:text-gray-100 text-lg mb-2">About this Lecture</h3>
                 <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
                     This lecture covers fundamental concepts crucial for the understanding of the subject. 
-                    The instructor dives deep into theoretical frameworks and provides real-world examples 
-                    to illustrate the complexity of the topic.
+                    The instructor provides theoretical frameworks and visual demonstrations 
+                    to illustrate the complexity of the topic. Use the transcript on the right to jump to specific visual explanations.
                 </p>
             </div>
         </div>
       </div>
 
-      {/* Right: AI Sidebar */}
       <div className="w-full md:w-[400px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex flex-col h-[50vh] md:h-screen sticky top-0 transition-colors duration-300">
         <div className="flex border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
             <button 
@@ -377,10 +356,10 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ lecture, onBack, onUpd
                                         key={idx} 
                                         ref={isActive ? activeSegmentRef : null}
                                         onClick={() => handleSeek(segment.time)}
-                                        className={`p-6 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-all duration-300 ${
+                                        className={`p-6 cursor-pointer transition-all duration-300 border-l-4 ${
                                             isActive 
-                                            ? 'bg-orange-50 dark:bg-orange-900/30 border-l-4 border-primary shadow-lg ring-1 ring-primary/20 transform scale-[1.02]' 
-                                            : 'border-l-4 border-transparent opacity-80 hover:opacity-100'
+                                            ? 'bg-primary/10 dark:bg-primary/20 border-primary shadow-xl ring-2 ring-primary/30 transform scale-[1.03] z-10 relative' 
+                                            : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800 opacity-80 hover:opacity-100'
                                         }`}
                                      >
                                          <div className="flex gap-4">
